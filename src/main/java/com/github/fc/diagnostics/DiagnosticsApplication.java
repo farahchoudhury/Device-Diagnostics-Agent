@@ -2,8 +2,12 @@ package com.github.fc.diagnostics;
 
 import com.github.fc.diagnostics.collector.DiagnosticsCollector;
 import com.github.fc.diagnostics.collector.ManifestWriter;
+import com.github.fc.diagnostics.collector.SessionManager;
 import com.github.fc.diagnostics.config.ConfigLoader;
 import com.github.fc.diagnostics.config.DiagnosticsConfig;
+import com.github.fc.diagnostics.crash.CrashContextBuilder;
+import com.github.fc.diagnostics.crash.CrashReportWriter;
+import com.github.fc.diagnostics.crash.GlobalCrashHandler;
 import com.github.fc.diagnostics.logging.DiagnosticsLoggers;
 import com.github.fc.diagnostics.logging.LoggingBootstrap;
 import com.github.fc.diagnostics.util.FileUtils;
@@ -13,6 +17,8 @@ import java.nio.file.Path;
 import java.util.Map;
 
 public final class DiagnosticsApplication {
+
+    private static GlobalCrashHandler crashHandler;
 
     public static void main(String[] args) {
 
@@ -27,11 +33,11 @@ public final class DiagnosticsApplication {
 
         DiagnosticsCollector collector = new DiagnosticsCollector();
 
-        ManifestWriter writer = new ManifestWriter();
+        ManifestWriter manifestWriter = new ManifestWriter();
 
         Map<String, Object> manifest = collector.collect(config);
 
-        Path manifestFile = writer.write(config.appRoot().resolve("manifests"), manifest);
+        Path manifestFile = manifestWriter.write(config.appRoot().resolve("manifests"), manifest);
 
         logger.info("Diagnostics manifest created: {}", manifestFile);
 
@@ -41,6 +47,21 @@ public final class DiagnosticsApplication {
 
         logger.info("Upload interval: {}", config.uploadInterval());
 
+        CrashReportWriter crashWriter = new CrashReportWriter();
+
+        SessionManager session = new SessionManager();
+
+        CrashContextBuilder context = new CrashContextBuilder(session);
+
+        crashHandler = new GlobalCrashHandler(
+                crashWriter,
+                context,
+                config.appRoot().resolve("crashes")
+        );
+
+        Thread.setDefaultUncaughtExceptionHandler(crashHandler);
+
+        simulateCrash();
         simulateLogging();
     }
 
@@ -77,5 +98,10 @@ public final class DiagnosticsApplication {
 
         DiagnosticsLoggers.crashes()
                 .error("Crash logger test entry");
+    }
+
+    private static void simulateCrash() {
+
+        throw new RuntimeException("Test crash system");
     }
 }
