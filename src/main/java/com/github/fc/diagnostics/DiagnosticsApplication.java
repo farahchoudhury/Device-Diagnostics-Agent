@@ -1,11 +1,16 @@
 package com.github.fc.diagnostics;
 
+import com.github.fc.diagnostics.collector.DiagnosticsCollector;
+import com.github.fc.diagnostics.collector.ManifestWriter;
 import com.github.fc.diagnostics.config.ConfigLoader;
 import com.github.fc.diagnostics.config.DiagnosticsConfig;
 import com.github.fc.diagnostics.logging.DiagnosticsLoggers;
 import com.github.fc.diagnostics.logging.LoggingBootstrap;
 import com.github.fc.diagnostics.util.FileUtils;
 import org.slf4j.Logger;
+
+import java.nio.file.Path;
+import java.util.Map;
 
 public final class DiagnosticsApplication {
 
@@ -18,16 +23,23 @@ public final class DiagnosticsApplication {
 
         LoggingBootstrap.initialize(config);
 
-        Logger logger =
-                DiagnosticsLoggers.diagnostics();
+        Logger logger = org.slf4j.LoggerFactory.getLogger(DiagnosticsApplication.class);
 
-        logger.info("Diagnostics logging initialized");
+        DiagnosticsCollector collector = new DiagnosticsCollector();
 
-        logger.info("Application root: {}",
-                config.appRoot());
+        ManifestWriter writer = new ManifestWriter();
 
-        logger.info("Upload interval: {}",
-                config.uploadInterval());
+        Map<String, Object> manifest = collector.collect(config);
+
+        Path manifestFile = writer.write(config.appRoot().resolve("manifests"), manifest);
+
+        logger.info("Diagnostics manifest created: {}", manifestFile);
+
+        logger.info("Diagnostics system fully initialized");
+
+        logger.info("Application root: {}", config.appRoot());
+
+        logger.info("Upload interval: {}", config.uploadInterval());
 
         simulateLogging();
     }
