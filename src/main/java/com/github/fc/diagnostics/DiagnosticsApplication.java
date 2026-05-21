@@ -2,14 +2,12 @@ package com.github.fc.diagnostics;
 
 import com.github.fc.diagnostics.config.ConfigLoader;
 import com.github.fc.diagnostics.config.DiagnosticsConfig;
+import com.github.fc.diagnostics.logging.DiagnosticsLoggers;
+import com.github.fc.diagnostics.logging.LoggingBootstrap;
 import com.github.fc.diagnostics.util.FileUtils;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class DiagnosticsApplication {
-
-    private static final Logger logger =
-            LoggerFactory.getLogger(DiagnosticsApplication.class);
 
     public static void main(String[] args) {
 
@@ -18,7 +16,20 @@ public final class DiagnosticsApplication {
 
         initializeDirectories(config);
 
-        logger.info("Diagnostics agent started");
+        LoggingBootstrap.initialize(config);
+
+        Logger logger =
+                DiagnosticsLoggers.diagnostics();
+
+        logger.info("Diagnostics logging initialized");
+
+        logger.info("Application root: {}",
+                config.appRoot());
+
+        logger.info("Upload interval: {}",
+                config.uploadInterval());
+
+        simulateLogging();
     }
 
     private static void initializeDirectories(
@@ -37,5 +48,22 @@ public final class DiagnosticsApplication {
 
         FileUtils.ensureDirectory(
                 config.appRoot().resolve("exports"));
+    }
+
+    private static void simulateLogging() {
+
+        Logger appLogger =
+                org.slf4j.LoggerFactory.getLogger(
+                        DiagnosticsApplication.class);
+
+        Logger diagnosticsLogger =
+                DiagnosticsLoggers.diagnostics();
+
+        appLogger.info("Application logger online");
+
+        diagnosticsLogger.info("Diagnostics logger online");
+
+        DiagnosticsLoggers.crashes()
+                .error("Crash logger test entry");
     }
 }
