@@ -2,9 +2,100 @@
 
 <Configuration status="WARN">
 
+    <Properties>
+
+        <Property name="LOG_DIR">
+            ${sys:DIAGNOSTICS_LOG_DIR}
+        </Property>
+
+        <Property name="ARCHIVE_DIR">
+            ${LOG_DIR}/archived
+        </Property>
+
+    </Properties>
+
     <Appenders>
 
-        <Console name="Console" target="SYSTEM_OUT">
+        <!-- ================================================= -->
+        <!-- APPLICATION LOGS                                  -->
+        <!-- ================================================= -->
+
+        <RollingFile
+                name="ApplicationFile"
+                fileName="${LOG_DIR}/application.log"
+                filePattern=
+                        "${ARCHIVE_DIR}/application-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <JsonTemplateLayout/>
+
+            <Policies>
+
+                <TimeBasedTriggeringPolicy interval="1"/>
+
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+
+            </Policies>
+
+            <DefaultRolloverStrategy max="30"/>
+
+        </RollingFile>
+
+        <!-- ================================================= -->
+        <!-- DIAGNOSTICS LOGS                                  -->
+        <!-- ================================================= -->
+
+        <RollingFile
+                name="DiagnosticsFile"
+                fileName="${LOG_DIR}/diagnostics.log"
+                filePattern=
+                        "${ARCHIVE_DIR}/diagnostics-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout
+                    pattern="%d [%t] %-5level %logger - %msg%n"/>
+
+            <Policies>
+
+                <TimeBasedTriggeringPolicy interval="1"/>
+
+                <SizeBasedTriggeringPolicy size="5 MB"/>
+
+            </Policies>
+
+            <DefaultRolloverStrategy max="30"/>
+
+        </RollingFile>
+
+        <!-- ================================================= -->
+        <!-- CRASH LOGS                                        -->
+        <!-- ================================================= -->
+
+        <RollingFile
+                name="CrashFile"
+                fileName="${LOG_DIR}/crashes.log"
+                filePattern=
+                        "${ARCHIVE_DIR}/crashes-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout
+                    pattern="%d [%t] %-5level %logger - %msg%n"/>
+
+            <Policies>
+
+                <TimeBasedTriggeringPolicy interval="1"/>
+
+                <SizeBasedTriggeringPolicy size="5 MB"/>
+
+            </Policies>
+
+            <DefaultRolloverStrategy max="60"/>
+
+        </RollingFile>
+
+        <!-- ================================================= -->
+        <!-- CONSOLE                                           -->
+        <!-- ================================================= -->
+
+        <Console name="Console"
+                 target="SYSTEM_OUT">
 
             <PatternLayout
                     pattern="%d [%t] %-5level %logger - %msg%n"/>
@@ -15,8 +106,43 @@
 
     <Loggers>
 
-        <Root level="INFO">
+        <!-- ================================================= -->
+        <!-- DIAGNOSTICS LOGGER                                -->
+        <!-- ================================================= -->
+
+        <Logger
+                name="diagnostics"
+                level="INFO"
+                additivity="false">
+
+            <AppenderRef ref="DiagnosticsFile"/>
             <AppenderRef ref="Console"/>
+
+        </Logger>
+
+        <!-- ================================================= -->
+        <!-- CRASH LOGGER                                      -->
+        <!-- ================================================= -->
+
+        <Logger
+                name="crash"
+                level="ERROR"
+                additivity="false">
+
+            <AppenderRef ref="CrashFile"/>
+            <AppenderRef ref="Console"/>
+
+        </Logger>
+
+        <!-- ================================================= -->
+        <!-- ROOT LOGGER                                       -->
+        <!-- ================================================= -->
+
+        <Root level="INFO">
+
+            <AppenderRef ref="ApplicationFile"/>
+            <AppenderRef ref="Console"/>
+
         </Root>
 
     </Loggers>
