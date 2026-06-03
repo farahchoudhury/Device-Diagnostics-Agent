@@ -10,6 +10,10 @@ import com.github.fc.diagnostics.crash.CrashReportWriter;
 import com.github.fc.diagnostics.crash.GlobalCrashHandler;
 import com.github.fc.diagnostics.logging.DiagnosticsLoggers;
 import com.github.fc.diagnostics.logging.LoggingBootstrap;
+import com.github.fc.diagnostics.queue.QueueScheduler;
+import com.github.fc.diagnostics.queue.QueueWorker;
+import com.github.fc.diagnostics.queue.UploadQueueManager;
+import com.github.fc.diagnostics.upload.R2UploadService;
 import com.github.fc.diagnostics.util.FileUtils;
 import org.slf4j.Logger;
 
@@ -22,8 +26,7 @@ public final class DiagnosticsApplication {
 
     public static void main(String[] args) {
 
-        DiagnosticsConfig config =
-                new ConfigLoader().load();
+        DiagnosticsConfig config = new ConfigLoader().load();
 
         initializeDirectories(config);
 
@@ -38,6 +41,12 @@ public final class DiagnosticsApplication {
         Map<String, Object> manifest = collector.collect(config);
 
         Path manifestFile = manifestWriter.write(config.appRoot().resolve("manifests"), manifest);
+
+        UploadQueueManager queue = new UploadQueueManager(config.appRoot().resolve("queue"));
+
+        QueueWorker worker = new QueueWorker(queue, new R2UploadService());
+
+        new QueueScheduler().start(worker);
 
         logger.info("Diagnostics manifest created: {}", manifestFile);
 
@@ -61,7 +70,9 @@ public final class DiagnosticsApplication {
 
         Thread.setDefaultUncaughtExceptionHandler(crashHandler);
 
-        simulateCrash();
+        queue.enqueue(config.appRoot().resolve("logs/application.log").toString());
+
+        //simulateCrash();
         simulateLogging();
     }
 
