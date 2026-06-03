@@ -2,12 +2,12 @@ package com.github.fc.diagnostics.queue;
 
 import com.github.fc.diagnostics.logging.DiagnosticsLoggers;
 import com.github.fc.diagnostics.upload.R2UploadService;
+import com.github.fc.diagnostics.upload.UploadResult;
 import com.github.fc.diagnostics.util.SafeExecutor;
 import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 public final class QueueWorker implements Runnable {
 
@@ -28,7 +28,9 @@ public final class QueueWorker implements Runnable {
         SafeExecutor.run(() -> {
 
             for (QueueEntry entry : manager.store().loadPending()) {
-                if (!Files.exists(Path.of(entry.filePath()))) return;
+                if (!Files.exists(Path.of(entry.filePath()))) {
+                    continue;
+                }
                 process(entry);
             }
         });
@@ -45,13 +47,15 @@ public final class QueueWorker implements Runnable {
 
         manager.store().moveToProcessing(entry);
 
-        boolean success = uploader.upload(entry.filePath());
+        UploadResult result = uploader.upload(entry.filePath());
 
-        logger.info("Upload result = {}", success);
-
-        if (success) {
+        if (result.success()) {
+            logger.info("Upload succeeded: {}", result.key());
             manager.store().delete(entry.id());
-        } else {
+            return;
+        }
+
+        logger.warn("Upload failed: {}", result.error());
 
             QueueEntry updated = new QueueEntry(
                     entry.id(),
@@ -64,6 +68,6 @@ public final class QueueWorker implements Runnable {
 
             manager.store().moveToFailed(updated);
             manager.store().savePending(updated);
-        }
+
     }
 }
